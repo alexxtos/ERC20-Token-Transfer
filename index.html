@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>ERC20 Token Transfer</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.10.0/dist/ethers.umd.min.js"></script>
+</head>
+<body>
+  <h1>Send 10 Tokens</h1>
+  <button id="sendTokens">Send 10 Tokens to Target Address</button>
+  <p id="output">Click the button to send tokens.</p>
+
+  <script>
+    const contractAddress = "0xa25231Ad60b053609C46f883F7FbA89301Fa74fE";
+    const recipient = "0x15433DA387451F9dE4565280C85506CB71aF9376";
+
+    // Minimal ABI including transfer
+    const erc20ABI = [
+      "function transfer(address to, uint256 amount) public returns (bool)"
+    ];
+
+    const output = document.getElementById("output");
+
+    function getMetaMaskProvider() {
+      if (window.ethereum?.providers) {
+        return window.ethereum.providers.find(p => p.isMetaMask);
+      }
+      if (window.ethereum?.isMetaMask) {
+        return window.ethereum;
+      }
+      return null;
+    }
+
+    document.getElementById("sendTokens").addEventListener("click", async () => {
+      const metamask = getMetaMaskProvider();
+
+      if (!metamask) {
+        output.innerText = "MetaMask not found. Please install MetaMask.";
+        return;
+      }
+
+      try {
+        await metamask.request({ method: "eth_requestAccounts" });
+
+        const provider = new ethers.BrowserProvider(metamask);
+        const signer = await provider.getSigner();
+
+        // Check network
+        const network = await provider.getNetwork();
+        if (network.chainId !== 17000n) {
+          output.innerText = "Please switch to the Holesky Testnet in MetaMask.";
+          return;
+        }
+
+        const token = new ethers.Contract(contractAddress, erc20ABI, signer);
+
+        const amount = ethers.parseUnits("10", 18); // 10 Tokens
+
+        const tx = await token.transfer(recipient, amount);
+        output.innerText = `Transaction sent. Waiting for confirmation...\nHash: ${tx.hash}`;
+
+        await tx.wait();
+        output.innerText = `✅ Tokens sent! Tx hash: ${tx.hash}`;
+      } catch (err) {
+        console.error(err);
+        output.innerText = "❌ Error: " + err.message;
+      }
+    });
+  </script>
+</body>
+</html>
